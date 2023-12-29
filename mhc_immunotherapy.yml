@@ -1,0 +1,16 @@
+channels:
+- conda-forge
+- bioconda
+dependencies:
+- r-base=4.0
+- r-essentials=4.0
+- r-survminer=0.4 
+- r-shinyjs=2.0
+- r-shinydashboard=0.7
+- r-writexls=6.0.0
+- r-dt=0.16
+- r-cairo=1.5
+- r-shinybs=0.61 
+- bioconductor-deseq2
+
+# - r-dqshiny # conda conflicts
