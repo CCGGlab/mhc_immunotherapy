@@ -13,6 +13,7 @@ Other data sets that were used
 - [Rizvi et al., 2015](https://www.science.org/doi/10.1126/science.aaa1348): 34 anti-PD1 treated lung cancer patients
 - [Snyder et al., 2014](https://doi.org/10.1056/NEJMoa1406498): 35 anti-CTLA4 treated melanoma patients
 - [Van Allen et al., 2015](https://www.science.org/doi/10.1126/science.aad0095): 110 anti-CTLA4 treated melanoma patients
+- [Riaz et al., 2017](https://doi.org/10.1016/j.cell.2017.09.028): 68 anti-PD1 treated melanoma patients
 
 # Environment
   
@@ -30,6 +31,12 @@ DNA/RNA sequencing data was derived from dbGaP:
 
 - [phs000452.v3.p1](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000452.v3.p1): 
 - [phs000980.v1.p1](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000980.v1.p1)
+- [phs001041.v1.p1](https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phsphs001041.v1.p1)
+- [PRJNA307199](https://www.ebi.ac.uk/ena/browser/view/PRJNA307199)
+- [PRJNA343789](https://www.ebi.ac.uk/ena/browser/view/PRJNA343789)
+- [PRJEB23709](https://www.ebi.ac.uk/ena/browser/view/PRJEB23709)
+- [PRJNA359359](https://www.ebi.ac.uk/ena/browser/view/PRJNA359359)
+- [PRJNA356761](https://www.ebi.ac.uk/ena/browser/view/PRJNA356761)
 
 Data are stored in a patient x HLA gene data matrix with each cell containing the HLA allele.
 
@@ -76,9 +83,7 @@ The following clinical metadata were derived from supplements from the respectiv
 - Survival 
 - RECIST 
 - TMB: defined as the total number of nonsynonymous mutations
-- PD1 (CD277), GZMA, PRF1 expression
 - LOH HLA and B2M
-- MHC-I and MHC-II aggregate expression
 - ploidy, purity, heterogeneity
 - LN metastatic state
 
@@ -88,6 +93,23 @@ MHC-I and MHC-II zygosity, defined as the total number of different alleles (max
 source("scripts/ICB_data_process.R")
 ```
 
+
+## Gene expression quantification
+
+RSEM calculations
+```{sh}
+"scripts/other/run_rsem.sh"
+```
+
+Process RSEM output 
+```{r}
+source("scripts/other/create_txi_objects.R")
+```
+
+Batch correction
+```{r}
+source("scripts/other/create_icb_expr_rsem_converted-to-tpm_batch.R")
+```
 
 # Manuscript
 
@@ -125,8 +147,8 @@ source("scripts/manuscript_RECIST.R")
 ## Multivariate analysis
 
 Multivariate analysis to correlate all available & previously described biomarkers with MGBS
-- Fig. 3 & Fig. S4: Logistic regression (response variable = responder)
-- Fig. S5: Cox regression (response variable = survival)
+- Fig. 3 & Fig. S6: Logistic regression (response variable = responder)
+- Fig. S7: Cox regression (response variable = survival)
 
 ```{r}
 source("scripts/manuscript_multivariate.R")
@@ -136,7 +158,7 @@ source("scripts/manuscript_multivariate.R")
 
 GSEA of genes diff. expressed between high & low MGBS scores:
 - Fig. 4: comparison of GSEA in TMB with MGBS2
-- Fig. S8: complete analysis, stratified for ipilimumab
+- Fig. S9: complete analysis, stratified for ipilimumab
 
 ```{r}
 # Perform DGE & GSEA
@@ -157,7 +179,7 @@ source("scripts/manuscript_correlation_analysis.R")
 ## Neoantigen burden survival analysis
 
 Alternative approaches to MGBS: absolute & relative neoantigen burden
-- Fig. S6
+- Fig. S5
 
 ```{r}
 source("scripts/manuscript_surv_neoAgB.R")
@@ -166,10 +188,21 @@ source("scripts/manuscript_surv_neoAgB.R")
 ## Survival analysis on validation data
 
 MGBS analysis on other ICB datasets
-- Fig. S7
+- Fig. S4
 
 ```{r}
 source("scripts/manuscript_ICB_validation.R")
+```
+
+Multivariate analysis on independent ICB datasets
+- Fig. S8
+
+```{r}
+source("scripts/manuscript_ICB_validation_multivariate.R")
+```
+
+```{r}
+source("scripts/manuscript_ICB_validation_compare_variables.R")
 ```
 
 ## Summary table

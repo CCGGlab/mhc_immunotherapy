@@ -25,10 +25,10 @@ ICB_data$highTMB<- ICB_data$TMB > quantile(ICB_data$TMB, 0.5, na.rm=T)
 ICB_data$strongMHC1<- ICB_data$MGBS1 > quantile(ICB_data$MGBS1, 0.5, na.rm=T)
 ICB_data$strongMHC2<- ICB_data$MGBS2 > quantile(ICB_data$MGBS2, 0.5, na.rm=T)
 ICB_data$strongMHCnorm<- ICB_data$MGBSnorm > quantile(ICB_data$MGBSnorm, 0.5, na.rm=T)
-ICB_data$highPD1<- ICB_data$PD1 > quantile(ICB_data$PD1, 0.5, na.rm=T)
-ICB_data$highCYT<- ICB_data$CYT > quantile(ICB_data$CYT, 0.5, na.rm=T)
-ICB_data$highMHC1<- ICB_data$MHC1 > quantile(ICB_data$MHC1, 0.5, na.rm=T)
-ICB_data$highMHC2<- ICB_data$MHC2 > quantile(ICB_data$MHC2, 0.5, na.rm=T)
+ICB_data$highPD1<- ICB_data$PD1_noBatch > quantile(ICB_data$PD1_noBatch, 0.5, na.rm=T)
+ICB_data$highCYT<- ICB_data$CYT_noBatch > quantile(ICB_data$CYT_noBatch, 0.5, na.rm=T)
+ICB_data$highMHC1<- ICB_data$MHC1_noBatch > quantile(ICB_data$MHC1_noBatch, 0.5, na.rm=T)
+ICB_data$highMHC2<- ICB_data$MHC2_noBatch > quantile(ICB_data$MHC2_noBatch, 0.5, na.rm=T)
 ICB_data$highPurity<- ICB_data$purity > quantile(ICB_data$purity, 0.5, na.rm=T)
 ICB_data$highPloidy<- ICB_data$ploidy > quantile(ICB_data$ploidy, 0.5, na.rm=T)
 ICB_data$highHeterogeneity<- ICB_data$heterogeneity > quantile(ICB_data$heterogeneity, 0.5, na.rm=T)
@@ -161,7 +161,7 @@ Cox_model_ls[["fp_multi"]]<- fp_multi
 LR_model_ls<- list()
 
 # Univariate
-vars<- c("TMB","MGBS1","MGBS2","MGBSnorm","heterogeneity","purity","ploidy", "MHC1", "MHC2", "LDH", "LN_Met", "hasLOHHLA", "hasLOHB2M", "MHC1_zyg", "MHC2_zyg", "CYT","PD1")
+vars<- c("TMB","MGBS1","MGBS2","MGBSnorm","heterogeneity","purity","ploidy", "MHC1_noBatch", "MHC2_noBatch", "LDH", "LN_Met", "hasLOHHLA", "hasLOHB2M", "MHC1_zyg", "MHC2_zyg", "CYT_noBatch","PD1_noBatch")
 vars_dict<- c(
   TMB='TMB', 
   MGBS1='MGBS-I', 
@@ -170,16 +170,16 @@ vars_dict<- c(
   heterogeneity='Heterogeneity', 
   purity='Purity', 
   ploidy='Ploidy', 
-  MHC1='MHC-I expr.', 
-  MHC2='MHC-II expr.', 
+  MHC1_noBatch='MHC-I expr.', 
+  MHC2_noBatch='MHC-II expr.', 
   LDH='LDH', 
   LN_Met='LN Met', 
   hasLOHHLA='LOH HLA', 
   hasLOHB2M='LOH B2M', 
   MHC1_zyg='MHC-I Zygosity', 
   MHC2_zyg='MHC-II Zygosity', 
-  CYT='Cyt. act.', 
-  PD1='PD-L1 expr.'
+  CYT_noBatch='Cyt. act.', 
+  PD1_noBatch='PD-L1 expr.'
 )
 
 LR_uni_df<- NULL
@@ -333,19 +333,31 @@ format_model_names <- function(model_names) {
 ffw_vars <-
   list(
     `FALSE` = c("heterogeneity", "ploidy", "MGBS1"),
-    `TRUE` = c("MGBS2", "hasLOHB2M", "MHC2", "heterogeneity")
+    `TRUE` = c("MGBS2", "hasLOHB2M", "MHC2_noBatch", "heterogeneity")
+  )
+
+ffw_vars_rev <-
+  list(
+    `TRUE` = c("heterogeneity", "ploidy", "MGBS1"),
+    `FALSE` = c("MGBS2", "hasLOHB2M", "MHC2_noBatch", "heterogeneity")
+  )
+
+MHC_vars <-
+  list(
+    `FALSE` = c("MGBS2", "MHC2_noBatch"),
+    `TRUE` = c("MGBS2", "MHC2_noBatch")
   )
 
 ffw_nomgbs_vars <-
   list(
     `FALSE` = c("heterogeneity", "ploidy"),
-    `TRUE` = c("hasLOHB2M", "MHC2", "heterogeneity")
+    `TRUE` = c("hasLOHB2M", "MHC2_noBatch", "heterogeneity")
   )
 
 liu_vars <-
   list(
     `FALSE` = c("heterogeneity", "ploidy", "purity"),
-    `TRUE` = c("MHC2", "LN_Met", "LDH")
+    `TRUE` = c("MHC2_noBatch", "LN_Met", "LDH")
   )
 
 # Create an empty list to store the results
@@ -366,12 +378,17 @@ for (isPreIpi in c(T, F)) {
   ffw_model <- construct_formula(ffw_vars[[as.character(isPreIpi)]])
   
   ffw_nomgbs_model <- construct_formula(ffw_nomgbs_vars[[as.character(isPreIpi)]])
+
+  # Other
+  MHC2_model <- construct_formula(MHC_vars[[as.character(isPreIpi)]])
+  
+  ffw_rev_model <- construct_formula(ffw_vars_rev[[as.character(isPreIpi)]])
   
   # Univariate models
   univariate_models <- unname(sapply(vars, construct_formula))
   
   # Create list with all models
-  models <- c(univariate_models, liu_model, ffw_model, ffw_nomgbs_model)
+  models <- c(univariate_models, liu_model, ffw_model, ffw_nomgbs_model,MHC2_model,ffw_rev_model)
   model_names <- model_names <- sub("^R ~ ", "", models)
   
   # Cross-validation and calculation of ROC AUC

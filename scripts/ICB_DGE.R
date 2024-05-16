@@ -1,19 +1,15 @@
+load("data/MHC_immunotherapy.RData")
 library(tidyverse)
 
-# Get MGBS scores
-load("data/MHC_immunotherapy.RData")
+# Added: mapping table as ENSG -> HGNC must occur here (created by create_ENSG_HGNC_map_table.R)
+ENSG_HGNC_map_table <- ENSG_HGNC_map_table %>%
+  select(gene_id = ensembl_gene_id, gene = external_gene_name, gene_biotype)
+
+# Get MGBS scores for Liu
 ICB_data<- ICB_study[ICB_study$study=="Liu_2019",]
 
-# Get downloaded expression data
-ICB_expr<- as.data.frame(read_tsv("downloads/pub/campbell_2023/MORRISON-1-public/RNASeq/data/RNA-CancerCell-MORRISON1-combat_batch_corrected-logcpm-all_samples.tsv.zip"))
-gene_names<- ICB_expr$gene.hgnc.symbol
-
-# Standardize sample IDs
-ICB_meta<- read.table("downloads/pub/campbell_2023/MORRISON-1-public/RNASeq/RNA-CancerCell-MORRISON1-metadata.tsv", header=T, row.names = 1)
-colnames(ICB_expr)<- ICB_meta[colnames(ICB_expr),"subject.id"]
-ICB_expr<- ICB_expr[,grep("_liu", colnames(ICB_expr))]         
-colnames(ICB_expr)<- gsub("_liu","",colnames(ICB_expr))
-rownames(ICB_expr)<- gene_names
+# Convert to txi object to DGEList for Limma
+dgelist <- edgeR::DGEList(txi_object)
 
 # Stratify in 2 groups
 ICB_data$highTMB<- ICB_data$TMB > quantile(ICB_data$TMB, 0.5, na.rm=T)
@@ -25,25 +21,58 @@ ICB_data$strongMHCnorm<- ICB_data$MGBSnorm > quantile(ICB_data$MGBSnorm, 0.5, na
 ICB_data<- ICB_data[!is.na(ICB_data$strongMHC2),]
 
 # Only patients that contain expression information
-common_patients<- intersect(ICB_data$patient, colnames(ICB_expr))
+common_patients<- intersect(ICB_data$patient, colnames(txi_object))
 ICB_data<- ICB_data[ICB_data$patient%in%common_patients,]
-ICB_expr<- ICB_expr[,ICB_data$patient]
 
 # Limma
+library(edgeR) # needed for handling DGEList objects and preprocessing functions
 library(limma)
 DGE_ls<- list()
 vars<- c("highTMB","strongMHC1", "strongMHC2","strongMHCnorm")
 for(v in vars){
   cat(v," ")
   for(preIpi in c(NA,T,F)){
-    if(is.na(preIpi)) ICB_data_tmp<- ICB_data
-    else ICB_data_tmp<- ICB_data[ICB_data$preIpi==preIpi,]
-    design <- model.matrix(~ICB_data_tmp[[v]])
-    ICB_expr_tmp<- ICB_expr[,ICB_data_tmp$patient]
-    fit<- lmFit(ICB_expr_tmp, design)
-    fit<- eBayes(fit, trend=TRUE)
-    res<- topTable(fit, coef=ncol(design), number=Inf)
+    if(is.na(preIpi)) {
+      ICB_data_tmp<- ICB_data
+    } else {
+      ICB_data_tmp<- ICB_data[ICB_data$preIpi==preIpi,]
+    }
     
+    design <- model.matrix(~ICB_data_tmp[[v]])
+    
+    # Load the correct DGEList and take the requested subset
+    dge <- dgelist[,ICB_data_tmp$patient]
+    # Remove rows that consistently have zero or very low counts
+    # (As recommended in Limma manual: 15.3)
+    keep <- filterByExpr(dge, design)
+    dge <- dge[keep, ]
+
+    # Normalize and run voom transformation (15.3 and 15.5)
+    dge <- calcNormFactors(dge)
+    dge <- voom(dge, design)
+    # dge is now ready for lmFit()
+    
+    # Below, just changed ICB_expr to "dge"
+    fit<- lmFit(dge, design)
+    # We now applied the voom transform do not add "trend"
+    fit<- eBayes(fit)
+    # Obtain results and map gene IDs (from ENSG to HGNC)
+    res<- topTable(fit, coef=ncol(design), number=Inf) %>%
+      # We still have Ensembl IDs, make the mapping here
+      rownames_to_column("gene_id") %>%
+      left_join(ENSG_HGNC_map_table, by = "gene_id") %>%
+      select(-gene_id) %>%
+      # Only keep protein coding genes
+      filter(gene_biotype == "protein_coding") %>%
+      select(-gene_biotype) %>%
+      select(gene, everything()) %>%
+      # Mapping ENSG to HGNC might not be unique
+      # Keep the entry with lowest p value
+      group_by(gene) %>%
+      slice_min(P.Value) %>%
+      ungroup %>%
+      column_to_rownames("gene")
+
     # GSEA
     stat<- res$t
     names(stat)<- rownames(res)

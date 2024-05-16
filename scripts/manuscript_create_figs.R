@@ -1,6 +1,8 @@
 # Load functions
 library(cowplot)
 library(ggplot2)
+library(grid)
+library(gridExtra) 
 
 ##########
 # Fig. 1
@@ -153,7 +155,7 @@ p_right<- plot_grid(
 )
 
 p<- plot_grid(
-  p_ls$p_fGSEA, p_right, 
+  p_ls$p_fGSEA + xlim(0,23) + ylim(0,32), p_right, 
   ncol=2,
   rel_widths = c(2,1)
 )
@@ -258,28 +260,33 @@ gt<- ggplot_gtable(ggplot_build(p_ls$p_val_ls$fp))
 gt$heights[10] = 1/2*gt$heights[10]
 # fp<- grid.draw(gt)
 
+# Forest plot preIpi
+fp_preIpi<- p_ls$p_val_ls$fp_preIpi
+
 # Survival plots MGBS2
 p_surv<- plot_grid(
-  p_ls$p_val_ls$Hugo_2016$OS$strongMHC2 + ggtitle("Hugo et al., 2016"),
-  p_ls$p_val_ls$Gide_2019$OS$strongMHC2 + ggtitle("Gide et al., 2019"),
+  p_ls$p_val_ls$Hugo_2016$OS$strongMHC2$all + ggtitle("Hugo et al., 2016"),
+  p_ls$p_val_ls$Gide_2019$OS$strongMHC2$all + ggtitle("Gide et al., 2019"),
   p_ls$p_val_ls$Rizvi_2015$PFS$strongMHC2 + ggtitle("Rizvi et al., 2015"),
   ncol=1
 )
 
 # RECIST plots
 p_RECIST<- plot_grid(
-  plot_grid(NA, p_ls$p_val_ls$Gide_2019$RECIST,ncol=2,rel_widths = c(1,3)),
-  p_ls$p_val_ls$Rizvi_2015$RECIST,
+  p_ls$p_val_ls$Hugo_2016$RECIST$all + theme(legend.position = "left"),
+  plot_grid(NULL, p_ls$p_val_ls$Gide_2019$RECIST$all + theme(legend.position = "left"),ncol=2,rel_widths = c(1,5)),
+  p_ls$p_val_ls$Rizvi_2015$RECIST$all + theme(legend.position = "left"),
   ncol=1
 )
 
 # Create plot
 p<- plot_grid(
   gt,
+  fp_preIpi,
   plot_grid(p_surv, p_RECIST,ncol=3,labels=c("b","c",NA), rel_widths = c(2,3,1), label_size = 8),
   ncol = 1,
-  rel_heights = c(2,3),
-  labels = c("a",NA),
+  rel_heights = c(1.5,1,3),
+  labels = c("a","b",NA),
   label_size = 8
 )
 
@@ -440,7 +447,6 @@ ggplot2::ggsave(paste0("results/figs/manuscript_figS7_Cox.pdf"), p_cox, width = 
 # Models
 summary(p_ls$LR_model_ls$'FALSE'$fw)
 
-# 
 # Call:
 #   glm(formula = R ~ heterogeneity + ploidy + MGBS1, family = binomial, 
 #       data = ICB_data[ICB_data$preIpi == isPreIpi, ])
@@ -467,41 +473,72 @@ summary(p_ls$LR_model_ls$'FALSE'$fw)
 # Number of Fisher Scoring iterations: 5
 
 summary(p_ls$LR_model_ls$'TRUE'$fw)
+
 # Call:
-#   glm(formula = R ~ MGBS2 + MHC2 + hasLOHB2M + heterogeneity, family = binomial, 
-#       data = ICB_data[ICB_data$preIpi == isPreIpi, ])
+#   glm(formula = R ~ MGBS2 + MHC2_noBatch + hasLOHB2M + heterogeneity, 
+#       family = binomial, data = ICB_data[ICB_data$preIpi == isPreIpi, 
+#       ])
 # 
 # Deviance Residuals: 
-#   Min        1Q    Median        3Q       Max  
-# -2.68395  -0.32969   0.02498   0.34800   1.81980  
+#   Min       1Q   Median       3Q      Max  
+# -2.6740  -0.4442   0.1063   0.4512   1.5441  
 # 
 # Coefficients:
 #   Estimate Std. Error z value Pr(>|z|)   
-# (Intercept)   -6.416e-04  3.061e+00   0.000  0.99983   
-# MGBS2         -6.531e+01  2.659e+01  -2.456  0.01404 * 
-#   MHC2           9.524e-04  3.655e-04   2.606  0.00917 **
-#   hasLOHB2M     -8.341e+00  4.195e+00  -1.988  0.04680 * 
-#   heterogeneity  1.142e+01  5.191e+00   2.199  0.02786 * 
+# (Intercept)   -3.923e+00  3.072e+00  -1.277  0.20160   
+# MGBS2         -4.648e+01  1.865e+01  -2.492  0.01270 * 
+#   MHC2_noBatch   1.101e-03  4.081e-04   2.698  0.00697 **
+#   hasLOHB2M     -8.306e+00  3.776e+00  -2.200  0.02782 * 
+#   heterogeneity  1.053e+01  4.789e+00   2.199  0.02787 * 
 #   ---
 #   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 # 
 # (Dispersion parameter for binomial family taken to be 1)
 # 
-# Null deviance: 56.814  on 40  degrees of freedom
-# Residual deviance: 23.973  on 36  degrees of freedom
-# AIC: 33.973
+# Null deviance: 59.401  on 42  degrees of freedom
+# Residual deviance: 28.949  on 38  degrees of freedom
+# AIC: 38.949
 # 
 # Number of Fisher Scoring iterations: 7
 
-################################
-# Fig. S8: GSEA
-##############################
+######################################################### 
+# Fig. S8: Validation studies multivariate analysis
+#########################################################
 
-p_ls<- readRDS("results/data/manuscript_DGE_analysis.rds")
+p_ls<- readRDS("results/data/manuscript_validation_multivariate.rds")
+p_compare_ls<- readRDS("results/data/manuscript_validation_compare_variables.rds")
 
-p<- plot_grid(
-  NA,p_ls$p_GSEA_preIpi,
-  rel_widths = c(1,19)
+p_surv<- plot_grid(
+  plot_grid(p_ls$ROC + theme(plot.title = element_blank()),ggdraw(get_legend(p_ls$predict_surv$Liu_2019$all), xlim=c(1,1), ylim = c(1,1)),NULL,nrow = 1, rel_widths = c(2,2,3)),
+  plot_grid(
+    p_ls$predict_surv$Liu_2019$all + ggtitle("Liu et al., 2019") + theme(legend.position = "none"),
+    p_ls$predict_surv$Hugo_2016$all + ggtitle("Hugo et al., 2016") + theme(legend.position = "none"),
+    p_ls$predict_surv$Gide_2019$all + ggtitle("Gide et al., 2019") + theme(legend.position = "none"),
+    p_ls$predict_surv$Riaz_2017$all + ggtitle("Riaz et al., 2017") + theme(legend.position = "none"),
+    nrow=1
+  ),
+  plot_grid(
+    p_ls$predict_surv$Liu_2019$'FALSE' + ggtitle("Treatment naive") + theme(legend.position = "none"),
+    p_ls$predict_surv$Liu_2019$'TRUE' + ggtitle("Ipilimumab pretreated") + theme(legend.position = "none"),
+    p_ls$predict_surv$Riaz_2017$'FALSE' + ggtitle("Treatment naive") + theme(legend.position = "none"),
+    p_ls$predict_surv$Riaz_2017$'TRUE' + ggtitle("Ipilimumab pretreated") + theme(legend.position = "none"),
+    nrow=1
+  ),
+  ncol=1,
+  rel_heights = c(1,1,1)
+)
+
+# Get HM legend
+legend<- get_legend(p_compare_ls$pred_surv + theme(legend.position = "right"))
+p_legend<- ggdraw(legend)
+
+# Plot bottom part
+p_bottom<- plot_grid(
+  p_compare_ls$pred_surv + theme(legend.position = "none", axis.text.x = element_text(angle=45), title = element_blank()),
+  p_compare_ls$pred_R + theme(legend.position = "none", axis.text.x = element_text(angle=45), title = element_blank()),
+  plot_grid(p_ls$bp_heterogeneity,p_legend,ncol=1,labels = c("c",NA)),
+  ncol=3,
+  rel_widths = c(2,2,2)
 )
 
 # Footer
@@ -516,10 +553,118 @@ footer<- ggdraw() +
   ) 
 
 p<- plot_grid(
+  p_surv, p_bottom, footer,
+  ncol = 1,
+  rel_heights = c(10,10,1),
+  labels=c("a","b",NA)
+)
+
+# Create figure
+ggplot2::ggsave(paste0("results/figs/manuscript_figS8_validation_multivariate.pdf"), p, width = 178, height = 265, units = "mm")
+
+# Model
+p_ls$model
+
+# Call:  glm(formula = R ~ MHC2_z + MGBS2_z, family = binomial, data = ICB_data)
+# 
+# Coefficients:
+#   (Intercept)       MHC2_z      MGBS2_z  
+# 0.1395      -0.9765       0.8967  
+# 
+# Degrees of Freedom: 45 Total (i.e. Null);  43 Residual
+# (14 observations deleted due to missingness)
+# Null Deviance:	    63.68 
+# Residual Deviance: 48.73 	AIC: 54.73
+
+# Correlation Cox HRs
+cor_df<- p_compare_ls$pred_surv$data
+vars<- levels(cor_df$predictor)
+
+cor_matrix<- matrix(NA, length(vars), 4, dimnames = list(vars, c("liu_naive", "liu_pre", "riaz_naive", "riaz_pre")))
+for(v in vars){
+  cor_matrix[v,"liu_naive"]<- as.numeric(cor_df[cor_df$predictor==v & cor_df$study=="Liu et al., 2019" & cor_df$preIpi=="Treatment naive", "HR"])
+  cor_matrix[v,"liu_pre"]<- as.numeric(cor_df[cor_df$predictor==v & cor_df$study=="Liu et al., 2019" & cor_df$preIpi=="Pretreated", "HR"])
+  cor_matrix[v,"riaz_naive"]<- as.numeric(cor_df[cor_df$predictor==v & cor_df$study=="Riaz et al., 2017" & cor_df$preIpi=="Treatment naive", "HR"])
+  cor_matrix[v,"riaz_pre"]<- as.numeric(cor_df[cor_df$predictor==v & cor_df$study=="Riaz et al., 2017" & cor_df$preIpi=="Pretreated", "HR"])
+}
+
+cor.test(cor_matrix[,"liu_naive"], cor_matrix[,"riaz_naive"]) # r=0.87; p = 1.1e-4
+cor.test(cor_matrix[,"liu_pre"], cor_matrix[,"riaz_pre"]) # r = 0.050; p = 0.87
+
+################################
+# Fig. S9: GSEA
+##############################
+
+p_ls<- readRDS("results/data/manuscript_DGE_analysis.rds")
+
+p<- plot_grid(
+  NA,p_ls$p_GSEA_preIpi,
+  rel_widths = c(1,19)
+)
+
+# Footer
+footer<- ggdraw() + 
+  draw_label(
+    "Claeys et al. 2024 - Supplementary Figure 9",
+    fontface = 'bold',
+    y = 0,
+    hjust = 0.5,
+    vjust = -1,
+    size = 10
+  ) 
+
+p<- plot_grid(
   p, NA, footer,
   ncol = 1,
   rel_heights = c(12,7,1)
 )
 
-ggplot2::ggsave(paste0("results/figs/manuscript_figS8_GSEA.pdf"), p, width = 178, height = 265, units = "mm")
+ggplot2::ggsave(paste0("results/figs/manuscript_figS9_GSEA.pdf"), p, width = 178, height = 265, units = "mm")
 
+# Some numbers
+p_ls$p_GSEA_preIpi$data[
+  p_ls$p_GSEA_preIpi$data$pathway%in%c("HALLMARK_INTERFERON_GAMMA_RESPONSE","HALLMARK_G2M_CHECKPOINT","HALLMARK_E2F_TARGETS")
+  & p_ls$p_GSEA_preIpi$data$cond=="all"
+  & p_ls$p_GSEA_preIpi$data$var%in%c("highTMB","strongMHC2"),c("pathway","var","padj","NES")]
+# pathway        var         padj       NES
+# 1: HALLMARK_INTERFERON_GAMMA_RESPONSE    highTMB 1.137001e-21  2.811693
+# 2:            HALLMARK_G2M_CHECKPOINT    highTMB 4.613648e-19  2.724963
+# 3:               HALLMARK_E2F_TARGETS    highTMB 1.939716e-18  2.694781
+# 4: HALLMARK_INTERFERON_GAMMA_RESPONSE strongMHC2 6.417147e-30 -3.257081
+# 5:            HALLMARK_G2M_CHECKPOINT strongMHC2 8.802238e-05  1.730252
+# 6:               HALLMARK_E2F_TARGETS strongMHC2 2.600254e-02  1.426587
+
+p_ls$p_GSEA_preIpi$data[
+  p_ls$p_GSEA_preIpi$data$pathway%in%c("HALLMARK_INTERFERON_GAMMA_RESPONSE","HALLMARK_G2M_CHECKPOINT","HALLMARK_E2F_TARGETS")
+  & p_ls$p_GSEA_preIpi$data$cond=="FALSE",c("pathway","var","padj","NES")]
+# pathway           var         padj        NES
+# 1: HALLMARK_INTERFERON_GAMMA_RESPONSE       highTMB 1.045590e-17  2.7000517
+# 2:               HALLMARK_E2F_TARGETS       highTMB 1.123571e-06  2.0017115
+# 3:            HALLMARK_G2M_CHECKPOINT       highTMB 9.436590e-06  1.9313404
+# 4:               HALLMARK_E2F_TARGETS    strongMHC1 3.705309e-24  2.8289734
+# 5:            HALLMARK_G2M_CHECKPOINT    strongMHC1 3.273479e-16  2.5187709
+# 6: HALLMARK_INTERFERON_GAMMA_RESPONSE    strongMHC1 9.310148e-02 -1.2591407
+# 7: HALLMARK_INTERFERON_GAMMA_RESPONSE    strongMHC2 8.700460e-30 -3.3075026
+# 8:            HALLMARK_G2M_CHECKPOINT    strongMHC2 9.996884e-01  0.7103756
+# 9:               HALLMARK_E2F_TARGETS    strongMHC2 9.996884e-01  0.5627072
+# 10:               HALLMARK_E2F_TARGETS strongMHCnorm 2.957434e-43  3.4033589
+# 11:            HALLMARK_G2M_CHECKPOINT strongMHCnorm 3.724650e-33  3.1897813
+# 12: HALLMARK_INTERFERON_GAMMA_RESPONSE strongMHCnorm 8.251887e-01  0.9293197
+
+p_ls$p_GSEA_preIpi$data[
+  p_ls$p_GSEA_preIpi$data$pathway%in%c("HALLMARK_INTERFERON_GAMMA_RESPONSE","HALLMARK_G2M_CHECKPOINT","HALLMARK_E2F_TARGETS")
+  & p_ls$p_GSEA_preIpi$data$cond=="TRUE",c("pathway","var","padj","NES")]
+
+# pathway           var         padj       NES
+# 1:            HALLMARK_G2M_CHECKPOINT       highTMB 1.363141e-18  2.615735
+# 2:               HALLMARK_E2F_TARGETS       highTMB 5.491196e-11  2.265284
+# 3: HALLMARK_INTERFERON_GAMMA_RESPONSE       highTMB 3.051936e-08  2.013291
+# 4:               HALLMARK_E2F_TARGETS    strongMHC1 1.754815e-14 -2.518577
+# 5:            HALLMARK_G2M_CHECKPOINT    strongMHC1 4.178407e-13 -2.451385
+# 6: HALLMARK_INTERFERON_GAMMA_RESPONSE    strongMHC1 8.656149e-02  1.286962
+# 7:            HALLMARK_G2M_CHECKPOINT    strongMHC2 6.732831e-11  2.310844
+# 8:               HALLMARK_E2F_TARGETS    strongMHC2 2.400939e-10  2.277960
+# 9: HALLMARK_INTERFERON_GAMMA_RESPONSE    strongMHC2 4.867595e-06 -1.881148
+# 10: HALLMARK_INTERFERON_GAMMA_RESPONSE strongMHCnorm 7.038563e-05 -1.813337
+# 11:            HALLMARK_G2M_CHECKPOINT strongMHCnorm 2.180549e-02 -1.436483
+# 12:               HALLMARK_E2F_TARGETS strongMHCnorm 5.961633e-01 -1.013165

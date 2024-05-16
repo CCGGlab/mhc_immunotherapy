@@ -5,7 +5,7 @@ library(ggrepel)
 library(fgsea)
 load("data/MHC_immunotherapy.RData")
 DGE_ls<- readRDS("temp/DGE_ls.rds")
-  
+
 # plot ipi versus no ipi
 #########################
 
@@ -63,7 +63,7 @@ DGE_Ha_df_sel<- merge(DGE_Ha_df[DGE_Ha_df$var=="highTMB"&DGE_Ha_df$cond=="all",]
 DGE_Ha_df_sel$padj_mean<- rowMeans(DGE_Ha_df_sel[,c("padj.x", "padj.y")])
 fGSEA_plot<- ggplot(DGE_Ha_df_sel, aes(x = -log10(padj.x), y = -log10(padj.y), fill = NES.y, colour = NES.x, size= -log10(padj_mean))) +
   geom_point(shape=21, stroke=3) +
-  theme_bw() +
+  theme_cowplot() +
   theme(
     legend.position = "bottom",
     legend.key.size = unit(6, 'points'),
@@ -75,8 +75,8 @@ fGSEA_plot<- ggplot(DGE_Ha_df_sel, aes(x = -log10(padj.x), y = -log10(padj.y), f
   scale_colour_steps2(low = scales::muted("blue"), mid = "white", high = scales::muted("red")) +
   scale_fill_steps2(low = scales::muted("blue"), mid = "white", high = scales::muted("red")) +
   labs(x = "-log10(Padj) TMB", y = "-log10(Padj) TMB MGBS-II", colour = "NES TMB", fill = "NES MGBS-II", size = "-log10(Padj)") +
-  geom_label_repel(data = subset(DGE_Ha_df_sel, padj.x<1e-4|padj.y<1e-4),
-                   aes(label = pathway, fontface=3),
+  geom_label_repel(data = subset(DGE_Ha_df_sel, padj.x<1e-10|padj.y<1e-10),
+                   aes(label = gsub("HALLMARK_","",pathway), fontface=3),
                    size = 2,
                    colour="black",
                    box.padding   = 0.5,
@@ -98,7 +98,7 @@ for(v in c("highTMB","strongMHC2")){
   p_pw<- signif(res_tmp$GSEA$padj[res_tmp$GSEA$pathway==pw],3)
   ES_pw<- res_tmp$GSEA$ES[res_tmp$GSEA$pathway==pw]
   plot_lims<- c(-0.1,0.6) 
-  if(ES_pw<0) plot_lims<- c(-0.6,0.1) 
+  if(ES_pw<0) plot_lims<- c(-0.65,0.1) 
   
   if(v=="highTMB") varname<- "TMB"
   if(v=="strongMHC2") varname<- "MGBS-II"
