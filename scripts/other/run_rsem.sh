@@ -1,9 +1,6 @@
 #!/bin/bash
 mkdir temp/RSEM_output/
 
-# Generate STAR reference index
-bash 'scripts/other/generate_rsem_reference.sh'
-
 # Activate Conda environment where RSEM is installed
 conda activate temp/RSEM/RSEM/
 # channels:
@@ -13,6 +10,9 @@ conda activate temp/RSEM/RSEM/
 #   - rsem=1.3.3
 #   - star=2.7.10b
 #   - python=3.12
+
+# Generate STAR reference index
+bash 'scripts/other/generate_rsem_reference.sh'
 
 # Analyze 4 samples in parallel
 echo 4 > /tmp/jobs_rsem
