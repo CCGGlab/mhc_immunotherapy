@@ -1,4 +1,4 @@
-Analysis underlying the results reported in Claeys A and Van den Eynden J. MHC class II genotypes are independent predictors of anti-PD1 immunotherapy response in melanoma, 2024.
+Analysis underlying the results reported in Claeys A and Van den Eynden J. MHC class II genotypes are independent predictors of anti-PD1 immunotherapy response in melanoma, Communications Medicine, 2024.
 
 # Background & Aim
 
